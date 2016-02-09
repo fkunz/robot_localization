@@ -543,6 +543,9 @@ namespace RobotLocalization
     FilterUtilities::appendPrefix(tfPrefix, baseLinkFrameId_);
     FilterUtilities::appendPrefix(tfPrefix, worldFrameId_);
 
+    // Publish robot base transformations as parent
+    nhLocal_.param("publish_tf_as_parent", publishTfAsParent_, true);
+
     // Transform future dating
     double offsetTmp;
     nhLocal_.param("transform_time_offset", offsetTmp, 0.0);
@@ -1573,6 +1576,14 @@ namespace RobotLocalization
         // worldFrameId_ is the mapFrameId_ frame, we'll have some work to do.
         if (filteredPosition.header.frame_id == odomFrameId_)
         {
+          if(!publishTfAsParent_)
+          {
+            worldBaseLinkTransMsg_.header.frame_id = filteredPosition.child_frame_id;
+            worldBaseLinkTransMsg_.child_frame_id = filteredPosition.header.frame_id;
+            tf2::Transform worldBaseLinkTrans;
+            tf2::fromMsg(worldBaseLinkTransMsg_.transform, worldBaseLinkTrans);
+            worldBaseLinkTransMsg_.transform = tf2::toMsg(worldBaseLinkTrans.inverse());
+          }
           worldTransformBroadcaster.sendTransform(worldBaseLinkTransMsg_);
         }
         else if (filteredPosition.header.frame_id == mapFrameId_)
@@ -1605,10 +1616,19 @@ namespace RobotLocalization
 
             mapOdomTrans.mult(worldBaseLinkTrans, odomBaseLinkTrans);
 
-            mapOdomTransMsg.transform = tf2::toMsg(mapOdomTrans);
             mapOdomTransMsg.header.stamp = filteredPosition.header.stamp + tfTimeOffset_;
-            mapOdomTransMsg.header.frame_id = mapFrameId_;
-            mapOdomTransMsg.child_frame_id = odomFrameId_;
+            if (publishTfAsParent_)
+            {
+                mapOdomTransMsg.transform = tf2::toMsg(mapOdomTrans);
+                mapOdomTransMsg.header.frame_id = mapFrameId_;
+                mapOdomTransMsg.child_frame_id = odomFrameId_;
+            }
+            else
+            {
+                mapOdomTransMsg.transform = tf2::toMsg(mapOdomTrans.inverse());
+                mapOdomTransMsg.header.frame_id = odomFrameId_;
+                mapOdomTransMsg.child_frame_id = mapFrameId_;
+            }
 
             worldTransformBroadcaster.sendTransform(mapOdomTransMsg);
           }

@@ -493,6 +493,10 @@ template<class T> class RosFilter
     //!
     bool printDiagnostics_;
 
+    //! @brief Whether or not to publish robot base transformation as parent.
+    //!
+    bool publishTfAsParent_;
+
     //! @brief If including acceleration for each IMU input, whether or not we remove acceleration due to gravity
     //!
     std::map<std::string, bool> removeGravitationalAcc_;
